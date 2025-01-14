@@ -1,7 +1,7 @@
 import { AppError } from '../utils/AppError.js'
 import { sqliteConnection } from '../database/sqlite/sqlite.js'
 import pkg from 'bcryptjs'
-const { hash } = pkg
+const { hash, compare } = pkg
 
 export class UserController {
   async create(req, res) {
@@ -28,7 +28,7 @@ export class UserController {
   }
 
   async update(req, res) {
-    const { name, email } = req.body
+    const { name, email, password, old_password } = req.body
     const { id } = req.params
 
     const db = await sqliteConnection()
@@ -47,13 +47,31 @@ export class UserController {
       throw new AppError('Este e-mail já está em uso.')
     }
 
-    user.name = name
-    user.email = email
+    user.name = name ?? user.name
+    user.email = email ?? user.email
+
+    if (password && !old_password) {
+      throw new AppError('A senha antiga é necessária.')
+    }
+
+    if (password && old_password) {
+      const checkOldPassword = await compare(old_password, user.password)
+
+      if (!checkOldPassword) {
+        throw new AppError('Senha antiga não confere.')
+      }
+
+      user.password = await hash(password, 8)
+    }
 
     await db.run(
-      // biome-ignore lint/style/noUnusedTemplateLiteral: <explanation>
-      `UPDATE users SET name = ?, email = ?, updated_at = ? WHERE id = ?`,
-      [user.name, user.email, new Date(), id]
+      `UPDATE users SET 
+      name = ?, 
+      email = ?,
+      password = ?,
+      updated_at = DATETIME('now') 
+      WHERE id = ?`,
+      [user.name, user.email, user.password, id]
     )
 
     return res.json()
