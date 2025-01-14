@@ -1,13 +1,25 @@
 import { AppError } from '../utils/AppError.js'
+import { sqliteConnection } from '../database/sqlite/sqlite.js'
 
 export class UserController {
-  create(req, res) {
+  async create(req, res) {
     const { name, email, password } = req.body
+    const db = await sqliteConnection()
+    const checkUserExists = await db.get(
+      'SELECT * FROM users WHERE email = (?)',
+      [email]
+    )
 
-    if (!name) {
-      throw new AppError('Nome obrigatório.')
+    if (checkUserExists) {
+      throw new AppError('Este e-mail já está em uso.')
     }
 
-    res.status(201).json({ name, email, password })
+    await db.run('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', [
+      name,
+      email,
+      password,
+    ])
+
+    return res.status(201).json()
   }
 }
