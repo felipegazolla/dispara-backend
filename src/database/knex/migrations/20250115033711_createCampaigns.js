@@ -1,8 +1,8 @@
 export const up = knex =>
-  knex.schema.createTable('contacts', table => {
+  knex.schema.createTable('campaigns', table => {
     table.increments('id')
-    table.text('name').notNullable()
-    table.string('whatsapp_number').notNullable().unique()
+    table.string('name').notNullable()
+    table.text('description')
     table
       .integer('user_id')
       .references('id')
@@ -11,4 +11,4 @@ export const up = knex =>
     table.timestamp('created_at').defaultTo(knex.fn.now())
   })
 
-export const down = knex => knex.schema.dropTable('contacts')
+export const down = knex => knex.schema.dropTable('campaigns')
