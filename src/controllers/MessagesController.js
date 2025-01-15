@@ -1,13 +1,16 @@
 import { connection } from '../database/knex/knex.js'
+import { AppError } from '../utils/AppError.js'
 
 export class MessagesController {
   async send(req, res) {
-    const { number, message, sendBy } = req.body
+    const { number, message } = req.body
+    const user_id = req.user.id
 
-    if (!number || !message || !sendBy) {
-      return res.status(400).json({
-        error: 'Os campos "numero", "message" e "enviadoPor" são obrigatórios.',
-      })
+    if (!number || !message) {
+      throw new AppError(
+        'Os campos "number" e "message" são obrigatórios.',
+        400
+      )
     }
 
     try {
@@ -15,7 +18,7 @@ export class MessagesController {
         destination_number: number,
         message,
         status: 'send',
-        user_id: sendBy,
+        user_id,
         sended_at: new Date(),
       })
 
@@ -24,67 +27,80 @@ export class MessagesController {
         .json({ message: 'Mensagem enviada e registrada com sucesso.' })
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error)
-      return res
-        .status(500)
-        .json({ error: 'Erro ao enviar mensagem. Tente novamente mais tarde.' })
+      throw new AppError(
+        'Erro ao enviar mensagem. Tente novamente mais tarde.',
+        500
+      )
     }
   }
 
   async list(req, res) {
+    const user_id = req.user.id
+
     try {
-      const messages = await connection('messages').select('*')
+      const messages = await connection('messages')
+        .where({ user_id })
+        .select('*')
+
       return res.status(200).json(messages)
     } catch (error) {
       console.error('Erro ao listar mensagens:', error)
-      return res.status(500).json({
-        error: 'Erro ao listar mensagens. Tente novamente mais tarde.',
-      })
+      throw new AppError(
+        'Erro ao listar mensagens. Tente novamente mais tarde.',
+        500
+      )
     }
   }
 
   async show(req, res) {
     const { id } = req.params
+    const user_id = req.user.id
 
     if (!id) {
-      return res.status(400).json({ error: 'O campo "id" é obrigatório.' })
+      throw new AppError('O campo "id" é obrigatório.', 400)
     }
 
     try {
-      const message = await connection('messages').where({ id }).first()
+      const message = await connection('messages')
+        .where({ id, user_id })
+        .first()
 
       if (!message) {
-        return res.status(404).json({ error: 'Mensagem não encontrada.' })
+        throw new AppError('Mensagem não encontrada.', 404)
       }
 
       return res.status(200).json(message)
     } catch (error) {
       console.error('Erro ao buscar mensagem:', error)
-      return res
-        .status(500)
-        .json({ error: 'Erro ao buscar mensagem. Tente novamente mais tarde.' })
+      throw new AppError(
+        'Erro ao buscar mensagem. Tente novamente mais tarde.',
+        500
+      )
     }
   }
 
   async delete(req, res) {
     const { id } = req.params
+    const user_id = req.user.id
 
     if (!id) {
-      return res.status(400).json({ error: 'O campo "id" é obrigatório.' })
+      throw new AppError('O campo "id" é obrigatório.', 400)
     }
 
     try {
-      const rows = await connection('messages').where({ id }).del()
+      const rows = await connection('messages').where({ id, user_id }).del()
 
       if (!rows) {
-        return res.status(404).json({ error: 'Mensagem não encontrada.' })
+        throw new AppError('Mensagem não encontrada.', 404)
       }
 
       return res.status(200).json({ message: 'Mensagem deletada com sucesso.' })
     } catch (error) {
       console.error('Erro ao deletar mensagem:', error)
-      return res.status(500).json({
-        error: 'Erro ao deletar mensagem. Tente novamente mais tarde.',
-      })
+      throw new AppError(
+        'Erro ao deletar mensagem. Tente novamente mais tarde.',
+        500
+      )
     }
   }
 }
