@@ -1,7 +1,10 @@
 import { connection } from '../database/knex/knex.js'
 import { AppError } from '../utils/AppError.js'
-import bcrypt from 'bcryptjs';
-const { compare } = bcrypt;
+import bcrypt from 'bcryptjs'
+const { compare } = bcrypt
+import { jwtConfig } from '../configs/auth.js'
+import jsonwebtoken from 'jsonwebtoken'
+const { sign } = jsonwebtoken
 
 export class SessionsController {
   async create(req, res) {
@@ -19,6 +22,12 @@ export class SessionsController {
       throw new AppError('E-mail e/ou senha incorreta.', 401)
     }
 
-    return res.json({ user })
+    const { secret, expiresIn } = jwtConfig.jwt
+    const token = sign({}, secret, {
+      subject: String(user.id),
+      expiresIn,
+    })
+
+    return res.json({ user, token })
   }
 }
