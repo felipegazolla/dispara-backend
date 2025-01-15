@@ -5,6 +5,7 @@ import { campaignsRoutes } from './campaigns.routes.js'
 import { whatsappRoutes } from './whatsapp.routes.js'
 import { sessionsRoutes } from './sessions.routes.js'
 import { contactsRoutes } from './contacts.routes.js'
+import { reportsRoutes } from './reports.routes.js'
 
 export const routes = Router()
 
@@ -14,3 +15,4 @@ routes.use('/messages', messagesRoutes)
 routes.use('/campaigns', campaignsRoutes)
 routes.use('/whatsapp', whatsappRoutes)
 routes.use('/contacts', contactsRoutes)
+routes.use('/reports', reportsRoutes)

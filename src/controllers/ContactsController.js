@@ -80,6 +80,36 @@ export class ContactsController {
     }
   }
 
+  async updateCampaign(req, res) {
+    const { id } = req.params 
+    const { campaign_id } = req.body
+    const user_id = req.user.id
+
+    try {
+      const contact = await connection('contacts')
+        .where({ id, user_id })
+        .first()
+
+      if (!contact) {
+        throw new AppError('Contato não encontrado.', 404)
+      }
+
+      await connection('contacts')
+        .where({ id, user_id })
+        .update({ campaign_id })
+
+      return res
+        .status(200)
+        .json({ message: 'Campanha associada ao contato com sucesso.' })
+    } catch (error) {
+      console.error('Erro ao associar campanha ao contato:', error)
+      throw new AppError(
+        'Erro ao associar campanha ao contato. Tente novamente mais tarde.',
+        500
+      )
+    }
+  }
+
   async delete(req, res) {
     const { id } = req.params
     const user_id = req.user.id

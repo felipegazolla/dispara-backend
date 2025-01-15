@@ -8,12 +8,12 @@ export const up = knex =>
       .integer('campaign_id')
       .references('id')
       .inTable('campaigns')
-      .onDelete('CASCADE') // Apaga relatórios ao deletar a campanha
+      .onDelete('CASCADE') 
     table
       .integer('user_id')
       .references('id')
       .inTable('users')
-      .onDelete('CASCADE') // Apaga relatórios do usuário ao deletar o usuário
+      .onDelete('CASCADE') 
     table.timestamp('created_at').defaultTo(knex.fn.now())
   })
 
