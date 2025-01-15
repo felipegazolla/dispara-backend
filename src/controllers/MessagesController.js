@@ -1,5 +1,6 @@
 import { connection } from '../database/knex/knex.js'
 import { AppError } from '../utils/AppError.js'
+import dayjs from 'dayjs'
 
 export class MessagesController {
   async send(req, res) {
@@ -7,10 +8,7 @@ export class MessagesController {
     const user_id = req.user.id
 
     if (!number || !message) {
-      throw new AppError(
-        'Os campos "number" e "message" são obrigatórios.',
-        400
-      )
+      throw new AppError('O número e a mensagem são obrigatórios.', 400)
     }
 
     try {
@@ -19,7 +17,7 @@ export class MessagesController {
         message,
         status: 'send',
         user_id,
-        sended_at: new Date(),
+        sended_at: dayjs().format('HH:mm DD/MM/YY'),
       })
 
       return res

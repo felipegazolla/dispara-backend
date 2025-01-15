@@ -1,5 +1,6 @@
 import { connection } from '../database/knex/knex.js'
 import { AppError } from '../utils/AppError.js'
+import dayjs from 'dayjs'
 
 export class CampaignsController {
   async create(req, res) {
@@ -18,7 +19,7 @@ export class CampaignsController {
         name,
         description,
         user_id,
-        created_at: new Date(),
+        created_at: dayjs().format('HH:mm DD/MM/YY'),
       })
 
       return res

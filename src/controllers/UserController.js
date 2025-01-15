@@ -1,3 +1,4 @@
+import dayjs from 'dayjs'
 import { AppError } from '../utils/AppError.js'
 import { sqliteConnection } from '../database/sqlite/sqlite.js'
 import pkg from 'bcryptjs'
@@ -18,11 +19,10 @@ export class UserController {
 
     const hashedPassword = await hash(password, 8)
 
-    await db.run('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', [
-      name,
-      email,
-      hashedPassword,
-    ])
+    await db.run(
+      'INSERT INTO users (name, email, password, created_at) VALUES (?, ?, ?, ?)',
+      [name, email, hashedPassword, dayjs().format('HH:mm DD/MM/YY')]
+    )
 
     return res.status(201).json()
   }
@@ -69,9 +69,15 @@ export class UserController {
       name = ?, 
       email = ?,
       password = ?,
-      updated_at = DATETIME('now') 
+      updated_at = ?
       WHERE id = ?`,
-      [user.name, user.email, user.password, user_id]
+      [
+        user.name,
+        user.email,
+        user.password,
+        dayjs().format('HH:mm DD/MM/YY'),
+        user_id,
+      ]
     )
 
     return res.json()
