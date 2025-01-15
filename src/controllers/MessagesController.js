@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 
 export class MessagesController {
   async send(req, res) {
-    const { number, message } = req.body
+    const { number, message, campaign_id } = req.body
     const user_id = req.user.id
 
     if (!number || !message) {
@@ -12,13 +12,16 @@ export class MessagesController {
     }
 
     try {
-      await connection('messages').insert({
+      const messageData = {
         destination_number: number,
         message,
         status: 'send',
         user_id,
         sended_at: dayjs().format('HH:mm DD/MM/YY'),
-      })
+        campaign_id: campaign_id || null, 
+      }
+
+      await connection('messages').insert(messageData)
 
       return res
         .status(201)
@@ -34,11 +37,16 @@ export class MessagesController {
 
   async list(req, res) {
     const user_id = req.user.id
+    const { campaign_id } = req.query 
 
     try {
-      const messages = await connection('messages')
-        .where({ user_id })
-        .select('*')
+      const query = connection('messages').where({ user_id })
+
+      if (campaign_id) {
+        query.andWhere({ campaign_id }) 
+      }
+
+      const messages = await query.select('*')
 
       return res.status(200).json(messages)
     } catch (error) {

@@ -19,7 +19,7 @@ export class CampaignsController {
         name,
         description,
         user_id,
-        created_at: dayjs().format('HH:mm DD/MM/YY'),
+        created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'), 
       })
 
       return res

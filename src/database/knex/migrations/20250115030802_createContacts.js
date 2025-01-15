@@ -7,7 +7,12 @@ export const up = knex =>
       .integer('user_id')
       .references('id')
       .inTable('users')
-      .onDelete('CASCADE')
+      .onDelete('CASCADE') // Apaga contatos do usuário ao deletar o usuário
+    table
+      .integer('campaign_id')
+      .references('id')
+      .inTable('campaigns')
+      .onDelete('SET NULL') // Desvincula campanha ao deletar a campanha
     table.timestamp('created_at').defaultTo(knex.fn.now())
   })
 
