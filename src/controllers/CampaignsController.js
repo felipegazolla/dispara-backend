@@ -15,7 +15,6 @@ export class CampaignsController {
     }
 
     try {
-      // Verifica se todos os contatos existem e pertencem ao usuário
       const contacts = await connection('contacts')
         .whereIn('id', contact_ids)
         .andWhere({ user_id })
@@ -28,7 +27,6 @@ export class CampaignsController {
         )
       }
 
-      // Cria a campanha
       const [campaign_id] = await connection('campaigns').insert({
         name,
         description,
@@ -36,7 +34,6 @@ export class CampaignsController {
         created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       })
 
-      // Associa os contatos à campanha
       await connection('contacts')
         .whereIn('id', contact_ids)
         .update({ campaign_id })
@@ -88,7 +85,6 @@ export class CampaignsController {
         throw new AppError('Campanha não encontrada.', 404)
       }
 
-      // Recupera os contatos associados
       const contacts = await connection('contacts')
         .where({ campaign_id: id })
         .select('id', 'name', 'whatsapp_number')

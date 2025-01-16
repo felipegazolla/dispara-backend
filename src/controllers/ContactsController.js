@@ -20,7 +20,7 @@ export class ContactsController {
         whatsapp_number,
         user_id,
         campaign_id: campaign_id || null,
-        created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+        created_at: dayjs().format('YYYY-MM-DD HH:mm'),
       })
 
       return res
@@ -81,7 +81,7 @@ export class ContactsController {
   }
 
   async updateCampaign(req, res) {
-    const { id } = req.params 
+    const { id } = req.params
     const { campaign_id } = req.body
     const user_id = req.user.id
 
