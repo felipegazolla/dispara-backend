@@ -2,12 +2,14 @@ import dayjs from 'dayjs'
 import { AppError } from '../utils/AppError.js'
 import { sqliteConnection } from '../database/sqlite/sqlite.js'
 import pkg from 'bcryptjs'
+
 const { hash, compare } = pkg
 
 export class UserController {
   async create(req, res) {
     const { name, email, password } = req.body
     const db = await sqliteConnection()
+
     const checkUserExists = await db.get(
       'SELECT * FROM users WHERE email = (?)',
       [email]
@@ -19,12 +21,19 @@ export class UserController {
 
     const hashedPassword = await hash(password, 8)
 
-    await db.run(
+    const result = await db.run(
       'INSERT INTO users (name, email, password, created_at) VALUES (?, ?, ?, ?)',
-      [name, email, hashedPassword, dayjs().format('HH:mm DD/MM/YY')]
+      [name, email, hashedPassword, dayjs().format('HH:mm DD-MM-YYYY')]
     )
 
-    return res.status(201).json()
+    const userId = result.lastID
+
+    await db.run(
+      'INSERT INTO credits (user_id, credits, updated_at) VALUES (?, ?, ?)',
+      [userId, 10, dayjs().format('HH:mm DD-MM-YYYY')]
+    )
+
+    return res.status(201).json({ message: 'Usuário criado com sucesso.' })
   }
 
   async update(req, res) {
@@ -32,6 +41,7 @@ export class UserController {
     const user_id = req.user.id
 
     const db = await sqliteConnection()
+
     const user = await db.get('SELECT * FROM users WHERE id = (?)', [user_id])
 
     if (!user) {
@@ -66,20 +76,20 @@ export class UserController {
 
     await db.run(
       `UPDATE users SET 
-      name = ?, 
-      email = ?,
-      password = ?,
-      updated_at = ?
+        name = ?, 
+        email = ?,
+        password = ?,
+        updated_at = ?
       WHERE id = ?`,
       [
         user.name,
         user.email,
         user.password,
-        dayjs().format('HH:mm DD/MM/YY'),
+        dayjs().format('HH:mm DD-MM-YYYY'),
         user_id,
       ]
     )
 
-    return res.json()
+    return res.status(200).json({ message: 'Usuário atualizado com sucesso.' })
   }
 }

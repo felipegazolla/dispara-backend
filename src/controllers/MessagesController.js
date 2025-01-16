@@ -1,75 +1,94 @@
 import { AppError } from '../utils/AppError.js'
-import { sendMessage } from '../whatsapp/sendMessage.js'
 import { getClientInstance } from '../whatsapp/client.js'
 import { connection } from '../database/knex/knex.js'
+import pkg from 'whatsapp-web.js'
+import dayjs from 'dayjs'
+
+const { MessageMedia } = pkg
 
 export class MessagesController {
   async send(req, res) {
-    const { number, message, campaign_id } = req.body
+    const { numbers, message, campaign_id } = req.body
     const user_id = req.user.id
 
-    if (!number || !message) {
-      throw new AppError('O número e a mensagem são obrigatórios.', 400)
+    if (!numbers || !message) {
+      throw new AppError('Os números e a mensagem são obrigatórios.', 400)
     }
 
-    try {
-      const client = getClientInstance()
+    const client = getClientInstance()
+    if (!client || !client.info || !client.info.wid) {
+      throw new AppError('Cliente WhatsApp não autenticado.', 401)
+    }
 
-      if (!client || !client.info || !client.info.wid) {
-        throw new AppError('Cliente WhatsApp não está autenticado.', 401)
-      }
+    const userCredits = await connection('credits').where({ user_id }).first()
 
-      const messageData = await sendMessage({
-        numero: number,
-        mensagem: message,
-        user_id,
-        campaign_id,
-      })
+    if (!userCredits || userCredits.credits <= 0) {
+      throw new AppError('Créditos insuficientes para enviar mensagens.', 403)
+    }
 
-      return res.status(201).json({
-        message: 'Mensagem enviada com sucesso.',
-        data: messageData,
-      })
-    } catch (error) {
-      console.error('Erro ao enviar mensagem:', error)
+    const numberList = numbers.split(',').map(num => num.trim())
+    const totalNumbers = numberList.length
+
+    if (userCredits.credits < totalNumbers) {
       throw new AppError(
-        'Erro ao enviar mensagem. Tente novamente mais tarde.',
-        500
+        `Você tem apenas ${userCredits.credits} crédito(s) disponível(is), mas tentou enviar para ${totalNumbers} número(s).`,
+        403
       )
     }
-  }
 
-  async list(req, res) {
-    const user_id = req.user.id
-    const { campaign_id } = req.query
+    let media = null
+    if (req.file) {
+      const { mimetype, originalname, buffer } = req.file
+      media = new MessageMedia(
+        mimetype,
+        buffer.toString('base64'),
+        originalname
+      )
+    }
 
-    try {
-      const query = connection('messages').where({ user_id })
+    const results = []
+    let successCount = 0
 
-      if (campaign_id) {
-        query.andWhere({ campaign_id })
+    for (const number of numberList) {
+      try {
+        const numeroComCodigo = `${number}@c.us`
+
+        if (media) {
+          await client.sendMessage(numeroComCodigo, media, { caption: message })
+        } else {
+          await client.sendMessage(numeroComCodigo, message)
+        }
+
+        const messageData = {
+          destination_number: number,
+          message,
+          status: 'send',
+          user_id,
+          campaign_id: campaign_id || null,
+          sended_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+        }
+
+        await connection('messages').insert(messageData)
+        successCount++
+        results.push({ number, status: 'success', data: messageData })
+      } catch (error) {
+        results.push({ number, status: 'error', error: error.message })
       }
-
-      const messages = await query.select(
-        'id',
-        'destination_number',
-        'message',
-        'status',
-        'sended_at',
-        'campaign_id'
-      )
-
-      return res.status(200).json({
-        message: 'Mensagens listadas com sucesso.',
-        data: messages,
-      })
-    } catch (error) {
-      console.error('Erro ao listar mensagens:', error)
-      throw new AppError(
-        'Erro ao listar mensagens. Tente novamente mais tarde.',
-        500
-      )
     }
+
+    if (successCount > 0) {
+      await connection('credits')
+        .where({ user_id })
+        .decrement('credits', successCount)
+    }
+
+    return res.status(200).json({
+      message: 'Envio processado.',
+      successCount,
+      totalNumbers,
+      remainingCredits: userCredits.credits - successCount,
+      results,
+    })
   }
 
   async show(req, res) {

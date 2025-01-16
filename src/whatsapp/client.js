@@ -1,12 +1,18 @@
 import pkg from 'whatsapp-web.js'
 import EventEmitter from 'node:events'
+import fs from 'fs-extra'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const { Client, LocalAuth } = pkg
 
 const qrEmitter = new EventEmitter()
 let clientInstance = null
 
-export const initializeClient = () => {
+export const initializeClient = async () => {
   if (clientInstance) return clientInstance
 
   clientInstance = new Client({
@@ -28,6 +34,14 @@ export const initializeClient = () => {
 
   clientInstance.on('ready', () => {
     console.log('Cliente WhatsApp pronto!')
+
+    setInterval(async () => {
+      try {
+        await clientInstance.getState()
+      } catch (error) {
+        console.error('Erro ao verificar estado do cliente:', error.message)
+      }
+    }, 60000)
   })
 
   clientInstance.on('auth_failure', message => {
@@ -35,12 +49,28 @@ export const initializeClient = () => {
     clientInstance = null
   })
 
-  clientInstance.on('disconnected', reason => {
+  clientInstance.on('disconnected', async reason => {
     console.log(`Cliente desconectado: ${reason}`)
     clientInstance = null
+
+    try {
+      const authPath = path.resolve(
+        __dirname,
+        '../.wwebjs_auth/session-default'
+      )
+      if (fs.existsSync(authPath)) {
+        await fs.promises.rm(authPath, { recursive: true, force: true })
+        console.log('Diretório de autenticação limpo com sucesso.')
+      }
+    } catch (error) {
+      console.error(
+        'Erro ao limpar o diretório de autenticação:',
+        error.message
+      )
+    }
   })
 
-  clientInstance.initialize()
+  await clientInstance.initialize()
   return clientInstance
 }
 
