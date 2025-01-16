@@ -11,9 +11,14 @@ const { Client, LocalAuth } = pkg
 
 const qrEmitter = new EventEmitter()
 let clientInstance = null
+let isQrEmitted = false
+let isClientReady = false
 
 export const initializeClient = async () => {
-  if (clientInstance) return clientInstance
+  if (clientInstance) {
+    console.log('Cliente já inicializado.')
+    return clientInstance
+  }
 
   clientInstance = new Client({
     authStrategy: new LocalAuth({ clientId: 'default' }),
@@ -24,16 +29,23 @@ export const initializeClient = async () => {
   })
 
   clientInstance.on('qr', qr => {
-    console.log('QR Code recebido. Escaneie para autenticar.')
-    qrEmitter.emit('qr', qr)
+    if (!isClientReady && !isQrEmitted) {
+      console.log('QR Code recebido. Escaneie para autenticar.')
+      qrEmitter.emit('qr', qr)
+      isQrEmitted = true
+    }
   })
 
   clientInstance.on('authenticated', () => {
     console.log('Cliente autenticado com sucesso.')
+    isClientReady = true
+    isQrEmitted = false
+    qrEmitter.removeAllListeners('qr')
   })
 
   clientInstance.on('ready', () => {
     console.log('Cliente WhatsApp pronto!')
+    isClientReady = true
 
     setInterval(async () => {
       try {
@@ -46,11 +58,13 @@ export const initializeClient = async () => {
 
   clientInstance.on('auth_failure', message => {
     console.error('Falha na autenticação:', message)
+    isClientReady = false
     clientInstance = null
   })
 
   clientInstance.on('disconnected', async reason => {
     console.log(`Cliente desconectado: ${reason}`)
+    isClientReady = false
     clientInstance = null
 
     try {
@@ -70,7 +84,13 @@ export const initializeClient = async () => {
     }
   })
 
-  await clientInstance.initialize()
+  try {
+    await clientInstance.initialize()
+  } catch (error) {
+    console.error('Erro ao inicializar o cliente:', error.message)
+    throw new Error('Falha ao inicializar o cliente WhatsApp.')
+  }
+
   return clientInstance
 }
 
